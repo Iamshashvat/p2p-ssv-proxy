@@ -60,6 +60,9 @@ error P2pSsvProxy__SelectorNotAllowed(address _caller, bytes4 _selector);
 /// @param _amount amount of ETH that failed to transfer
 error P2pSsvProxy__EthTransferFailed(address _recipient, uint256 _amount);
 
+/// @notice Proxy has already been initialized
+error P2pSsvProxy__AlreadyInitialized();
+
 /// @title Proxy for SSVNetwork calls.
 /// @dev Each instance of P2pSsvProxy corresponds to 1 FeeDistributor instance.
 /// Thus, client to P2pSsvProxy instances is a 1-to-many relation.
@@ -67,8 +70,8 @@ error P2pSsvProxy__EthTransferFailed(address _recipient, uint256 _amount);
 /// Clients cover the costs of SSV tokens by EL rewards via FeeDistributor instance.
 contract P2pSsvProxy is OwnableAssetRecoverer, ERC165, IP2pSsvProxy {
 
-    /// @notice P2pSsvProxyFactory address
-    IP2pSsvProxyFactory private immutable i_p2pSsvProxyFactory;
+    /// @notice P2pSsvProxyFactory address (mutable, set during initialize, updatable by owner)
+    IP2pSsvProxyFactory private s_p2pSsvProxyFactory;
 
     /// @notice SSVNetwork address
     ISSVNetwork private immutable i_ssvNetwork;
@@ -115,22 +118,14 @@ contract P2pSsvProxy is OwnableAssetRecoverer, ERC165, IP2pSsvProxy {
 
     /// @notice If caller is not factory, revert
     modifier onlyP2pSsvProxyFactory() {
-        if (msg.sender != address(i_p2pSsvProxyFactory)) {
-            revert P2pSsvProxy__NotP2pSsvProxyFactoryCalled(msg.sender, i_p2pSsvProxyFactory);
+        if (msg.sender != address(s_p2pSsvProxyFactory)) {
+            revert P2pSsvProxy__NotP2pSsvProxyFactoryCalled(msg.sender, s_p2pSsvProxyFactory);
         }
         _;
     }
 
     /// @dev Set values that are constant, common for all clients, known at the initial deploy time.
-    /// @param _p2pSsvProxyFactory address of P2pSsvProxyFactory
-    constructor(
-        address _p2pSsvProxyFactory
-    ) {
-        if (!ERC165Checker.supportsInterface(_p2pSsvProxyFactory, type(IP2pSsvProxyFactory).interfaceId)) {
-            revert P2pSsvProxy__NotP2pSsvProxyFactory(_p2pSsvProxyFactory);
-        }
-        i_p2pSsvProxyFactory = IP2pSsvProxyFactory(_p2pSsvProxyFactory);
-
+    constructor() {
         i_ssvNetwork = (block.chainid == 1)
             ? ISSVNetwork(0xDD9BC35aE942eF0cFa76930954a156B3fF30a4E1)
             : ISSVNetwork(0x38A4794cCEd47d3baf7370CcC43B560D3a1beEFA);
@@ -143,7 +138,15 @@ contract P2pSsvProxy is OwnableAssetRecoverer, ERC165, IP2pSsvProxy {
     /// @inheritdoc IP2pSsvProxy
     function initialize(
         address _feeDistributor
-    ) external onlyP2pSsvProxyFactory {
+    ) external {
+        if (address(s_p2pSsvProxyFactory) != address(0)) {
+            revert P2pSsvProxy__AlreadyInitialized();
+        }
+        if (!ERC165Checker.supportsInterface(msg.sender, type(IP2pSsvProxyFactory).interfaceId)) {
+            revert P2pSsvProxy__NotP2pSsvProxyFactory(msg.sender);
+        }
+
+        s_p2pSsvProxyFactory = IP2pSsvProxyFactory(msg.sender);
         s_feeDistributor = IFeeDistributor(_feeDistributor);
 
         i_ssvToken.approve(address(i_ssvNetwork), type(uint256).max);
@@ -163,8 +166,8 @@ contract P2pSsvProxy is OwnableAssetRecoverer, ERC165, IP2pSsvProxy {
         bytes4 selector = msg.sig;
 
         bool isAllowed = msg.sender == owner() ||
-            (msg.sender == operator() && i_p2pSsvProxyFactory.isOperatorSelectorAllowed(selector)) ||
-            (msg.sender == getClient() && i_p2pSsvProxyFactory.isClientSelectorAllowed(selector));
+            (msg.sender == operator() && s_p2pSsvProxyFactory.isOperatorSelectorAllowed(selector)) ||
+            (msg.sender == getClient() && s_p2pSsvProxyFactory.isClientSelectorAllowed(selector));
 
         if (!isAllowed) {
             revert P2pSsvProxy__SelectorNotAllowed(caller, selector);
@@ -339,7 +342,7 @@ contract P2pSsvProxy is OwnableAssetRecoverer, ERC165, IP2pSsvProxy {
     /// @inheritdoc IP2pSsvProxy
     function withdrawAllSSVTokensToFactory() public onlyOperatorOrOwner {
         uint256 balance = i_ssvToken.balanceOf(address(this));
-        i_ssvToken.transfer(address(i_p2pSsvProxyFactory), balance);
+        i_ssvToken.transfer(address(s_p2pSsvProxyFactory), balance);
     }
 
     function withdrawFromSSVToFactory(
@@ -454,10 +457,20 @@ contract P2pSsvProxy is OwnableAssetRecoverer, ERC165, IP2pSsvProxy {
     /// @inheritdoc IP2pSsvProxy
     function withdrawEthToFactory() external onlyOperatorOrOwner {
         uint256 balance = address(this).balance;
-        (bool success, ) = address(i_p2pSsvProxyFactory).call{value: balance}("");
+        (bool success, ) = address(s_p2pSsvProxyFactory).call{value: balance}("");
         if (!success) {
-            revert P2pSsvProxy__EthTransferFailed(address(i_p2pSsvProxyFactory), balance);
+            revert P2pSsvProxy__EthTransferFailed(address(s_p2pSsvProxyFactory), balance);
         }
+    }
+
+    /// @inheritdoc IP2pSsvProxy
+    function setP2pSsvProxyFactory(address _newFactory) external onlyOwner {
+        if (!ERC165Checker.supportsInterface(_newFactory, type(IP2pSsvProxyFactory).interfaceId)) {
+            revert P2pSsvProxy__NotP2pSsvProxyFactory(_newFactory);
+        }
+        address oldFactory = address(s_p2pSsvProxyFactory);
+        s_p2pSsvProxyFactory = IP2pSsvProxyFactory(_newFactory);
+        emit P2pSsvProxy__P2pSsvProxyFactorySet(oldFactory, _newFactory);
     }
 
     /// @notice Extract operatorIds and clusterIndex out of SsvOperator list
@@ -549,17 +562,17 @@ contract P2pSsvProxy is OwnableAssetRecoverer, ERC165, IP2pSsvProxy {
 
     /// @inheritdoc IP2pSsvProxy
     function getFactory() external view returns (address) {
-        return address(i_p2pSsvProxyFactory);
+        return address(s_p2pSsvProxyFactory);
     }
 
     /// @inheritdoc IOwnable
     function owner() public view override(OwnableBase, IOwnable) returns (address) {
-        return i_p2pSsvProxyFactory.owner();
+        return s_p2pSsvProxyFactory.owner();
     }
 
     /// @inheritdoc IOwnableWithOperator
     function operator() public view returns (address) {
-        return i_p2pSsvProxyFactory.operator();
+        return s_p2pSsvProxyFactory.operator();
     }
 
     /// @inheritdoc IP2pSsvProxy
@@ -567,12 +580,16 @@ contract P2pSsvProxy is OwnableAssetRecoverer, ERC165, IP2pSsvProxy {
         return address(s_feeDistributor);
     }
 
-    /// @dev V1 interfaceId before ETH-native methods were added. Kept for backward compatibility.
+    /// @dev V1 interfaceId (original, before ETH-native methods). Kept for backward compatibility.
     bytes4 private constant _IP2P_SSV_PROXY_V1_INTERFACE_ID = 0xf575c147;
+
+    /// @dev V2 interfaceId (after ETH-native methods, before mutable factory setter). Kept for backward compatibility.
+    bytes4 private constant _IP2P_SSV_PROXY_V2_INTERFACE_ID = 0xc6bdab97;
 
     /// @inheritdoc ERC165
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
         return interfaceId == type(IP2pSsvProxy).interfaceId ||
+               interfaceId == _IP2P_SSV_PROXY_V2_INTERFACE_ID ||
                interfaceId == _IP2P_SSV_PROXY_V1_INTERFACE_ID ||
                super.supportsInterface(interfaceId);
     }

@@ -25,7 +25,7 @@ contract Deploy is Script {
             feeDistributorFactory,
             referenceFeeDistributor
         );
-        P2pSsvProxy referenceP2pSsvProxy = new P2pSsvProxy(address(p2pSsvProxyFactory));
+        P2pSsvProxy referenceP2pSsvProxy = new P2pSsvProxy();
         p2pSsvProxyFactory.setReferenceP2pSsvProxy(address(referenceP2pSsvProxy));
 
         IChangeOperator(address(feeDistributorFactory)).changeOperator(address(p2pSsvProxyFactory));

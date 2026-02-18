@@ -463,6 +463,30 @@ interface IP2pSsvProxyFactory is ISSVWhitelistingContract, IOwnableWithOperator,
         ISSVNetwork.Cluster calldata _cluster
     ) external payable;
 
+    /**********************************/
+    /* Beacon Proxy Management        */
+    /**********************************/
+
+    /// @notice Emits when the beacon address for new proxy deployments is set
+    /// @param _beacon the new beacon address
+    event P2pSsvProxyFactory__BeaconSet(address indexed _beacon);
+
+    /// @notice Set the UpgradeableBeacon address for new proxy deployments
+    /// @dev When set, new proxies are deployed as BeaconProxy instances. When unset, clone path is used.
+    /// @param _beacon The UpgradeableBeacon address (its implementation must support IP2pSsvProxy)
+    function setBeacon(address _beacon) external;
+
+    /// @notice Returns the current beacon address (zero if not set)
+    /// @return beacon address
+    function getBeacon() external view returns (address);
+
+    /// @notice Predict the address of a BeaconProxy-based P2pSsvProxy instance
+    /// @param _feeDistributorInstance The address of FeeDistributor instance
+    /// @return address the predicted proxy address
+    function predictP2pSsvProxyAddressBeacon(
+        address _feeDistributorInstance
+    ) external view returns (address);
+
     /// @notice Returns the FeeDistributorFactory address
     /// @return FeeDistributorFactory address
     function getFeeDistributorFactory() external view returns (address);

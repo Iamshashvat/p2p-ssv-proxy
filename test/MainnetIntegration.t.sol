@@ -86,7 +86,7 @@ contract MainnetIntegration is Test {
             address(feeDistributorFactory),
             referenceFeeDistributor
         );
-        referenceP2pSsvProxy = address(new P2pSsvProxy(address(p2pSsvProxyFactory)));
+        referenceP2pSsvProxy = address(new P2pSsvProxy());
         p2pSsvProxyFactory.setReferenceP2pSsvProxy(referenceP2pSsvProxy);
 
         operatorIds = new uint64[](4);
@@ -668,16 +668,16 @@ contract MainnetIntegration is Test {
         vm.stopPrank();
 
         {
-        address clientFromProxy = P2pSsvProxy(proxy1).getClient();
+        address clientFromProxy = P2pSsvProxy(payable(proxy1)).getClient();
         assertEq(clientFromProxy, client);
 
-        address factoryFromProxy = P2pSsvProxy(proxy1).getFactory();
+        address factoryFromProxy = P2pSsvProxy(payable(proxy1)).getFactory();
         assertEq(factoryFromProxy, address(p2pSsvProxyFactory));
 
-        address feeDistributorFromProxy = P2pSsvProxy(proxy1).getFeeDistributor();
+        address feeDistributorFromProxy = P2pSsvProxy(payable(proxy1)).getFeeDistributor();
         assertEq(feeDistributorFromProxy, feeDistributor);
 
-        address ownerFromProxy = P2pSsvProxy(proxy1).owner();
+        address ownerFromProxy = P2pSsvProxy(payable(proxy1)).owner();
         assertEq(ownerFromProxy, owner);
         }
 
@@ -686,7 +686,7 @@ contract MainnetIntegration is Test {
         vm.stopPrank();
 
         {
-        address operatorFromProxy = P2pSsvProxy(proxy1).operator();
+        address operatorFromProxy = P2pSsvProxy(payable(proxy1)).operator();
         assertEq(operatorFromProxy, operator);
 
         address operatorFromFactory = p2pSsvProxyFactory.operator();
@@ -822,7 +822,7 @@ contract MainnetIntegration is Test {
             proxy1,
             client
         );
-        P2pSsvProxy(proxy1).setFeeRecipientAddress(client);
+        P2pSsvProxy(payable(proxy1)).setFeeRecipientAddress(client);
         vm.stopPrank();
 
         console.log("test_setFeeRecipientAddress finsihed");
@@ -936,7 +936,7 @@ contract MainnetIntegration is Test {
             clusterAfterRemoval
         );
 
-        P2pSsvProxy(proxy1).removeValidators(_pubkeys, _operatorIds, _clusters);
+        P2pSsvProxy(payable(proxy1)).removeValidators(_pubkeys, _operatorIds, _clusters);
         vm.stopPrank();
 
         console.log("test_removeValidators finsihed");
@@ -989,7 +989,7 @@ contract MainnetIntegration is Test {
             clusterAfterLiquidation
         );
 
-        P2pSsvProxy(proxy1).liquidate(_operatorIds, _clusters);
+        P2pSsvProxy(payable(proxy1)).liquidate(_operatorIds, _clusters);
         vm.stopPrank();
 
         uint256 ssvTokenBalanceAfter = ssvToken.balanceOf(proxy1);
@@ -999,10 +999,10 @@ contract MainnetIntegration is Test {
         uint256 ssvOwnerTokenBalanceBefore = ssvToken.balanceOf(owner);
 
         vm.expectRevert(abi.encodeWithSelector(OwnableBase__CallerNotOwner.selector, address(this), owner));
-        P2pSsvProxy(proxy1).withdrawSSVTokens(owner, ssvPayload1.tokenAmount);
+        P2pSsvProxy(payable(proxy1)).withdrawSSVTokens(owner, ssvPayload1.tokenAmount);
 
         vm.startPrank(owner);
-        P2pSsvProxy(proxy1).withdrawSSVTokens(owner, ssvPayload1.tokenAmount);
+        P2pSsvProxy(payable(proxy1)).withdrawSSVTokens(owner, ssvPayload1.tokenAmount);
         vm.stopPrank();
 
         uint256 ssvOwnerTokenBalanceAfter = ssvToken.balanceOf(owner);
@@ -1021,7 +1021,7 @@ contract MainnetIntegration is Test {
             clusterAfter1stRegistation
         );
 
-        P2pSsvProxy(proxy1).reactivate(ssvPayload1.tokenAmount, _operatorIds, _clusters);
+        P2pSsvProxy(payable(proxy1)).reactivate(ssvPayload1.tokenAmount, _operatorIds, _clusters);
         vm.stopPrank();
 
         _clusters[0] = clusterAfter1stRegistation;
@@ -1040,7 +1040,7 @@ contract MainnetIntegration is Test {
             clusterAfterDeposit
         );
 
-        P2pSsvProxy(proxy1).depositToSSV(42 ether, _operatorIds, _clusters);
+        P2pSsvProxy(payable(proxy1)).depositToSSV(42 ether, _operatorIds, _clusters);
 
         console.log("test_liquidateAndReactivate finsihed");
     }
@@ -1199,7 +1199,7 @@ contract MainnetIntegration is Test {
         uint256 tokenAmount = 42;
 
         vm.startPrank(owner);
-        P2pSsvProxy(proxyAddress).withdrawFromSSV(tokenAmount, operatorIds, clusters);
+        P2pSsvProxy(payable(proxyAddress)).withdrawFromSSV(tokenAmount, operatorIds, clusters);
         vm.stopPrank();
 
         uint256 proxyBalanceAfter = ssvToken.balanceOf(proxyAddress);
@@ -1209,7 +1209,7 @@ contract MainnetIntegration is Test {
         uint256 ownerBalanceBefore = ssvToken.balanceOf(owner);
 
         vm.startPrank(owner);
-        P2pSsvProxy(proxyAddress).withdrawSSVTokens(owner, tokenAmount);
+        P2pSsvProxy(payable(proxyAddress)).withdrawSSVTokens(owner, tokenAmount);
         vm.stopPrank();
 
         uint256 ownerBalanceAfter = ssvToken.balanceOf(owner);
@@ -1306,7 +1306,7 @@ contract MainnetIntegration is Test {
             ssvPayload1.ssvValidators[1].pubkey
         );
 
-        P2pSsvProxy(proxy1).bulkExitValidator(_pubkeys, _operatorIds);
+        P2pSsvProxy(payable(proxy1)).bulkExitValidator(_pubkeys, _operatorIds);
         vm.stopPrank();
 
         vm.startPrank(operator);
@@ -1318,7 +1318,7 @@ contract MainnetIntegration is Test {
             ssvPayload1.ssvValidators[1].pubkey
         );
 
-        P2pSsvProxy(proxy1).bulkExitValidator(_pubkeys, _operatorIds);
+        P2pSsvProxy(payable(proxy1)).bulkExitValidator(_pubkeys, _operatorIds);
         vm.stopPrank();
 
         vm.startPrank(client);
@@ -1337,14 +1337,14 @@ contract MainnetIntegration is Test {
             ssvPayload1.ssvValidators[3].pubkey
         );
 
-        P2pSsvProxy(proxy1).bulkExitValidator(_pubkeys, _operatorIds);
+        P2pSsvProxy(payable(proxy1)).bulkExitValidator(_pubkeys, _operatorIds);
         vm.stopPrank();
 
         vm.startPrank(nobody);
 
         vm.expectRevert(abi.encodeWithSelector(P2pSsvProxy__CallerNeitherOperatorNorOwnerNorClient.selector, nobody));
 
-        P2pSsvProxy(proxy1).bulkExitValidator(_pubkeys, _operatorIds);
+        P2pSsvProxy(payable(proxy1)).bulkExitValidator(_pubkeys, _operatorIds);
         vm.stopPrank();
 
         console.log("test_bulkExitValidator finsihed");
@@ -1367,7 +1367,7 @@ contract MainnetIntegration is Test {
         uint256 tokenAmount = 42;
 
         vm.startPrank(owner);
-        P2pSsvProxy(proxyAddress).withdrawFromSSV(tokenAmount, operatorIds, clusters);
+        P2pSsvProxy(payable(proxyAddress)).withdrawFromSSV(tokenAmount, operatorIds, clusters);
         vm.stopPrank();
 
         uint256 proxyBalanceAfter = ssvToken.balanceOf(proxyAddress);
@@ -1378,13 +1378,13 @@ contract MainnetIntegration is Test {
 
         vm.expectRevert(abi.encodeWithSelector(P2pSsvProxy__CallerNeitherOperatorNorOwner.selector, nobody, operator, owner));
 
-        P2pSsvProxy(proxyAddress).withdrawAllSSVTokensToFactory();
+        P2pSsvProxy(payable(proxyAddress)).withdrawAllSSVTokensToFactory();
         vm.stopPrank();
 
         uint256 factoryBalanceBefore = ssvToken.balanceOf(address(p2pSsvProxyFactory));
 
         vm.startPrank(owner);
-        P2pSsvProxy(proxyAddress).withdrawAllSSVTokensToFactory();
+        P2pSsvProxy(payable(proxyAddress)).withdrawAllSSVTokensToFactory();
         vm.stopPrank();
 
         uint256 factoryBalanceAfter = ssvToken.balanceOf(address(p2pSsvProxyFactory));
@@ -1412,13 +1412,13 @@ contract MainnetIntegration is Test {
 
         vm.expectRevert(abi.encodeWithSelector(P2pSsvProxy__CallerNeitherOperatorNorOwner.selector, nobody, operator, owner));
 
-        P2pSsvProxy(proxyAddress).withdrawFromSSVToFactory(tokenAmount, operatorIds, clusters);
+        P2pSsvProxy(payable(proxyAddress)).withdrawFromSSVToFactory(tokenAmount, operatorIds, clusters);
         vm.stopPrank();
 
         uint256 factoryBalanceBefore = ssvToken.balanceOf(address(p2pSsvProxyFactory));
 
         vm.startPrank(operator);
-        P2pSsvProxy(proxyAddress).withdrawFromSSVToFactory(tokenAmount, operatorIds, clusters);
+        P2pSsvProxy(payable(proxyAddress)).withdrawFromSSVToFactory(tokenAmount, operatorIds, clusters);
         vm.stopPrank();
 
         uint256 factoryBalanceAfter = ssvToken.balanceOf(address(p2pSsvProxyFactory));
@@ -1704,7 +1704,7 @@ contract MainnetIntegration is Test {
         console.log("test_callAnyContract started");
 
         vm.startPrank(owner);
-        P2pSsvProxy p2pSsvProxyInstance = P2pSsvProxy(p2pSsvProxyFactory.createP2pSsvProxy(referenceFeeDistributor));
+        P2pSsvProxy p2pSsvProxyInstance = P2pSsvProxy(payable(p2pSsvProxyFactory.createP2pSsvProxy(referenceFeeDistributor)));
         vm.stopPrank();
 
         deal(address(ssvToken), address(p2pSsvProxyInstance), 50 ether);

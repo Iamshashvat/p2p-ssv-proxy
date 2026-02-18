@@ -227,6 +227,19 @@ interface IP2pSsvProxy is IOwnableWithOperator, IERC165 {
     /// @dev Should be called by P2P only
     function withdrawEthToFactory() external;
 
+    /// @notice Emits when the P2pSsvProxyFactory address is updated
+    /// @param _oldFactory previous factory address
+    /// @param _newFactory new factory address
+    event P2pSsvProxy__P2pSsvProxyFactorySet(
+        address indexed _oldFactory,
+        address indexed _newFactory
+    );
+
+    /// @notice Update the P2pSsvProxyFactory address for this proxy
+    /// @dev Should be called by owner only. Changes the trust boundary for admin/operator resolution.
+    /// @param _newFactory new P2pSsvProxyFactory address (must support IP2pSsvProxyFactory interface)
+    function setP2pSsvProxyFactory(address _newFactory) external;
+
     /// @notice Returns the client address
     /// @return address client address
     function getClient() external view returns (address);
