@@ -453,13 +453,13 @@ contract P2pSsvProxy is OwnableAssetRecoverer, ERC165, IP2pSsvProxy {
         );
     }
 
-    // TODO: Discuss if this convenience method is needed or if inherited transferEther() is sufficient
     /// @inheritdoc IP2pSsvProxy
-    function withdrawEthToFactory() external onlyOperatorOrOwner {
+    function withdrawEthToOwner() external onlyOperatorOrOwner {
+        address ownerAddress = owner();
         uint256 balance = address(this).balance;
-        (bool success, ) = address(s_p2pSsvProxyFactory).call{value: balance}("");
+        (bool success, ) = ownerAddress.call{value: balance}("");
         if (!success) {
-            revert P2pSsvProxy__EthTransferFailed(address(s_p2pSsvProxyFactory), balance);
+            revert P2pSsvProxy__EthTransferFailed(ownerAddress, balance);
         }
     }
 
@@ -580,11 +580,11 @@ contract P2pSsvProxy is OwnableAssetRecoverer, ERC165, IP2pSsvProxy {
         return address(s_feeDistributor);
     }
 
-    /// @dev V1 interfaceId (original, before ETH-native methods). Kept for backward compatibility.
+    /// @dev V1 interfaceId (original deployed interface). Kept for backward compatibility.
     bytes4 private constant _IP2P_SSV_PROXY_V1_INTERFACE_ID = 0xf575c147;
 
-    /// @dev V2 interfaceId (after ETH-native methods, before mutable factory setter). Kept for backward compatibility.
-    bytes4 private constant _IP2P_SSV_PROXY_V2_INTERFACE_ID = 0xc6bdab97;
+    /// @dev V2 interfaceId
+    bytes4 private constant _IP2P_SSV_PROXY_V2_INTERFACE_ID = 0x17f787bd;
 
     /// @inheritdoc ERC165
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {

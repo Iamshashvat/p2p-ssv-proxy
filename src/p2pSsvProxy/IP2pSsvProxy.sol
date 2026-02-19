@@ -222,10 +222,9 @@ interface IP2pSsvProxy is IOwnableWithOperator, IERC165 {
         ISSVNetwork.Cluster calldata _cluster
     ) external payable;
 
-    // TODO: Discuss if this convenience method is needed or if inherited transferEther() is sufficient
-    /// @notice Withdraw all ETH from this contract to P2pSsvProxyFactory
+    /// @notice Withdraw all ETH from this contract to the owner
     /// @dev Should be called by P2P only
-    function withdrawEthToFactory() external;
+    function withdrawEthToOwner() external;
 
     /// @notice Emits when the P2pSsvProxyFactory address is updated
     /// @param _oldFactory previous factory address

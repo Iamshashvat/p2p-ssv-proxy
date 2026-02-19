@@ -368,36 +368,16 @@ contract MainnetIntegration is Test {
         return p2pSsvProxyFactory.predictP2pSsvProxyAddress(feeDistributor);
     }
 
-    function test_depositEthAndRegisterValidators_Mainnet() public {
-        console.log("test_depositEthAndRegisterValidators_Mainnet started");
+    function test_depositEthAndRegisterValidators_Mainnet_Deprecated() public {
+        console.log("test_depositEthAndRegisterValidators_Mainnet_Deprecated started");
 
         vm.deal(client, 1000 ether);
         vm.startPrank(client);
 
-        DepositData memory depositData1DifferentLength = getDepositData1DifferentLength();
         DepositData memory depositData1 = getDepositData1();
         SsvPayload memory ssvPayload1 = getSsvPayload1();
 
-        vm.expectRevert(abi.encodeWithSelector(
-            P2pSsvProxyFactory__DepositDataArraysShouldHaveTheSameLength.selector, 5, 4, 5
-        ));
-        p2pSsvProxyFactory.depositEthAndRegisterValidators{value: 160 ether}(
-            depositData1DifferentLength,
-            withdrawalCredentialsAddress,
-            ssvPayload1,
-            clientConfig,
-            referrerConfig
-        );
-
-        vm.expectRevert(abi.encodeWithSelector(P2pSsvProxyFactory__EthValueMustBe32TimesValidatorCount.selector, 159 ether));
-        p2pSsvProxyFactory.depositEthAndRegisterValidators{value: 159 ether}(
-            depositData1,
-            withdrawalCredentialsAddress,
-            ssvPayload1,
-            clientConfig,
-            referrerConfig
-        );
-
+        vm.expectRevert(P2pSsvProxyFactory__DeprecatedFunction.selector);
         p2pSsvProxyFactory.depositEthAndRegisterValidators{value: 160 ether}(
             depositData1,
             withdrawalCredentialsAddress,
@@ -408,56 +388,15 @@ contract MainnetIntegration is Test {
 
         vm.stopPrank();
 
-        address proxy_ = p2pSsvProxyFactory.predictP2pSsvProxyAddress(clientConfig);
-        bool isWhitelisted = p2pSsvProxyFactory.isWhitelisted(proxy_, 42);
-        assertTrue(isWhitelisted);
-
-        vm.roll(block.number + 5000);
-
-        vm.startPrank(owner);
-        p2pSsvProxyFactory.setMaxSsvTokenAmountPerValidator(MaxSsvTokenAmountPerValidator / 10);
-        vm.stopPrank();
-
-        DepositData memory depositData2 = getDepositData2();
-        SsvPayload memory ssvPayload2 = getSsvPayload2();
-
-        vm.startPrank(client);
-        vm.expectRevert(P2pSsvProxyFactory__MaxSsvTokenAmountPerValidatorExceeded.selector);
-        p2pSsvProxyFactory.depositEthAndRegisterValidators{value: 64 ether}(
-            depositData2,
-            withdrawalCredentialsAddress,
-            ssvPayload2,
-            clientConfig,
-            referrerConfig
-        );
-        vm.stopPrank();
-
-        vm.startPrank(owner);
-        p2pSsvProxyFactory.setMaxSsvTokenAmountPerValidator(MaxSsvTokenAmountPerValidator);
-        vm.stopPrank();
-
-        vm.startPrank(client);
-
-        p2pSsvProxyFactory.depositEthAndRegisterValidators{value: 64 ether}(
-            depositData2,
-            withdrawalCredentialsAddress,
-            ssvPayload2,
-            clientConfig,
-            referrerConfig
-        );
-
-        vm.stopPrank();
-
-        console.log("test_depositEthAndRegisterValidators_Mainnet finsihed");
+        console.log("test_depositEthAndRegisterValidators_Mainnet_Deprecated finished");
     }
 
-    function test_depositEthAndRegisterValidators_via_bulkRegisterValidators() public {
-        console.log("test_depositEthAndRegisterValidators_via_bulkRegisterValidators started");
+    function test_depositEthAndRegisterValidators_via_bulkRegisterValidators_Deprecated() public {
+        console.log("test_depositEthAndRegisterValidators_via_bulkRegisterValidators_Deprecated started");
 
         vm.deal(client, 1000 ether);
         vm.startPrank(client);
 
-        DepositData memory depositData1DifferentLength = getDepositData1DifferentLength();
         DepositData memory depositData1 = getDepositData1();
 
         bytes[] memory pubKeys1 = new bytes[](5);
@@ -467,40 +406,7 @@ contract MainnetIntegration is Test {
             sharesData1[i] = validatorSharesData[i];
         }
 
-        vm.expectRevert(abi.encodeWithSelector(
-            P2pSsvProxyFactory__DepositDataArraysShouldHaveTheSameLength.selector, 5, 4, 5
-        ));
-        p2pSsvProxyFactory.depositEthAndRegisterValidators{value: 160 ether}(
-            depositData1DifferentLength,
-            withdrawalCredentialsAddress,
-
-            allowedSsvOperatorOwners,
-            operatorIds,
-            pubKeys1,
-            sharesData1,
-            getTokenAmount1(),
-            getCluster1(),
-
-            clientConfig,
-            referrerConfig
-        );
-
-        vm.expectRevert(abi.encodeWithSelector(P2pSsvProxyFactory__EthValueMustBe32TimesValidatorCount.selector, 159 ether));
-        p2pSsvProxyFactory.depositEthAndRegisterValidators{value: 159 ether}(
-            depositData1,
-            withdrawalCredentialsAddress,
-
-            allowedSsvOperatorOwners,
-            operatorIds,
-            pubKeys1,
-            sharesData1,
-            getTokenAmount1(),
-            getCluster1(),
-
-            clientConfig,
-            referrerConfig
-        );
-
+        vm.expectRevert(P2pSsvProxyFactory__DeprecatedFunction.selector);
         p2pSsvProxyFactory.depositEthAndRegisterValidators{value: 160 ether}(
             depositData1,
             withdrawalCredentialsAddress,
@@ -518,63 +424,7 @@ contract MainnetIntegration is Test {
 
         vm.stopPrank();
 
-        vm.roll(block.number + 5000);
-
-        vm.startPrank(owner);
-        p2pSsvProxyFactory.setMaxSsvTokenAmountPerValidator(MaxSsvTokenAmountPerValidator / 10);
-        vm.stopPrank();
-
-        DepositData memory depositData2 = getDepositData2();
-
-        bytes[] memory pubKeys2 = new bytes[](2);
-        bytes[] memory sharesData2 = new bytes[](2);
-        for (uint256 i = 0; i < 2; i++) {
-            pubKeys2[i] = validatorPubKeys[i + 5];
-            sharesData2[i] = validatorSharesData[i + 5];
-        }
-
-        vm.startPrank(client);
-        vm.expectRevert(P2pSsvProxyFactory__MaxSsvTokenAmountPerValidatorExceeded.selector);
-        p2pSsvProxyFactory.depositEthAndRegisterValidators{value: 64 ether}(
-            depositData2,
-            withdrawalCredentialsAddress,
-
-            allowedSsvOperatorOwners,
-            operatorIds,
-            pubKeys2,
-            sharesData2,
-            getTokenAmount1(),
-            clusterAfter1stRegistation,
-
-            clientConfig,
-            referrerConfig
-        );
-        vm.stopPrank();
-
-        vm.startPrank(owner);
-        p2pSsvProxyFactory.setMaxSsvTokenAmountPerValidator(MaxSsvTokenAmountPerValidator);
-        vm.stopPrank();
-
-        vm.startPrank(client);
-
-        p2pSsvProxyFactory.depositEthAndRegisterValidators{value: 64 ether}(
-            depositData2,
-            withdrawalCredentialsAddress,
-
-            allowedSsvOperatorOwners,
-            operatorIds,
-            pubKeys2,
-            sharesData2,
-            getTokenAmount1(),
-            clusterAfter1stRegistation,
-
-            clientConfig,
-            referrerConfig
-        );
-
-        vm.stopPrank();
-
-        console.log("test_depositEthAndRegisterValidators_via_bulkRegisterValidators finsihed");
+        console.log("test_depositEthAndRegisterValidators_via_bulkRegisterValidators_Deprecated finished");
     }
 
     function registerValidators() private {

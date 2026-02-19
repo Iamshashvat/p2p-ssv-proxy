@@ -232,13 +232,7 @@ interface IP2pSsvProxyFactory is ISSVWhitelistingContract, IOwnableWithOperator,
         address _feeDistributorInstance
     ) external returns(address p2pSsvProxyInstance);
 
-    /// @notice Batch deposit ETH and register validators with SSV (up to 50, calldata size is the limit)
-    /// @param _depositData signatures and depositDataRoots from Beacon deposit data
-    /// @param _withdrawalCredentialsAddress address for 0x01 withdrawal credentials from Beacon deposit data (1 for the batch)
-    /// @param _ssvPayload a stuct with data necessary for SSV registration (see `SsvPayload` struct for details)
-    /// @param _clientConfig address and basis points (percent * 100) of the client (for FeeDistributor)
-    /// @param _referrerConfig address and basis points (percent * 100) of the referrer (for FeeDistributor)
-    /// @return p2pSsvProxy client P2pSsvProxy instance that became the SSV cluster owner
+    /// @notice DEPRECATED. Always reverts. Use registerValidatorsEth for ETH-native registration.
     function depositEthAndRegisterValidators(
         DepositData calldata _depositData,
         address _withdrawalCredentialsAddress,
@@ -249,18 +243,7 @@ interface IP2pSsvProxyFactory is ISSVWhitelistingContract, IOwnableWithOperator,
         FeeRecipient calldata _referrerConfig
     ) external payable returns (address p2pSsvProxy);
 
-    /// @notice Batch deposit ETH and register validators with SSV (up to 50, calldata size is the limit)
-    /// @param _depositData signatures and depositDataRoots from Beacon deposit data
-    /// @param _withdrawalCredentialsAddress address for 0x01 withdrawal credentials from Beacon deposit data (1 for the batch)
-    /// @param _operatorOwners SSV operator owner addresses
-    /// @param _operatorIds SSV operator IDs
-    /// @param _publicKeys validator public keys
-    /// @param _sharesData encrypted shares related to the validator
-    /// @param _amount amount of ERC-20 SSV tokens to deposit into the cluster
-    /// @param _cluster SSV cluster
-    /// @param _clientConfig address and basis points (percent * 100) of the client (for FeeDistributor)
-    /// @param _referrerConfig address and basis points (percent * 100) of the referrer (for FeeDistributor)
-    /// @return p2pSsvProxy client P2pSsvProxy instance that became the SSV cluster owner
+    /// @notice DEPRECATED. Always reverts. Use registerValidatorsEth for ETH-native registration.
     function depositEthAndRegisterValidators(
         DepositData calldata _depositData,
         address _withdrawalCredentialsAddress,
@@ -410,34 +393,6 @@ interface IP2pSsvProxyFactory is ISSVWhitelistingContract, IOwnableWithOperator,
 
         FeeRecipient calldata _clientConfig,
         FeeRecipient calldata _referrerConfig
-    ) external payable returns (address p2pSsvProxy);
-
-    /// @notice Batch deposit ETH to beacon chain and register validators with SSV using ETH payments
-    /// @dev msg.value must equal COLLATERAL * validatorCount + _ssvEthAmount.
-    /// @param _depositData signatures and depositDataRoots from Beacon deposit data
-    /// @param _withdrawalCredentialsAddress address for 0x01 withdrawal credentials
-    /// @param _operatorOwners SSV operator owner addresses
-    /// @param _operatorIds SSV operator IDs
-    /// @param _publicKeys validator public keys
-    /// @param _sharesData encrypted shares related to the validators
-    /// @param _cluster SSV cluster
-    /// @param _clientConfig address and basis points (percent * 100) of the client (for FeeDistributor)
-    /// @param _referrerConfig address and basis points (percent * 100) of the referrer (for FeeDistributor)
-    /// @param _ssvEthAmount amount of ETH to forward to SSV for cluster funding
-    /// @return p2pSsvProxy client P2pSsvProxy instance that became the SSV cluster owner
-    function depositEthAndRegisterValidatorsEth(
-        DepositData calldata _depositData,
-        address _withdrawalCredentialsAddress,
-
-        address[] calldata _operatorOwners,
-        uint64[] calldata _operatorIds,
-        bytes[] calldata _publicKeys,
-        bytes[] calldata _sharesData,
-        ISSVNetwork.Cluster calldata _cluster,
-
-        FeeRecipient calldata _clientConfig,
-        FeeRecipient calldata _referrerConfig,
-        uint256 _ssvEthAmount
     ) external payable returns (address p2pSsvProxy);
 
     /// @notice Deposit ETH from P2pSsvProxyFactory directly to an SSV cluster
