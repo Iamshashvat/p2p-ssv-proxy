@@ -9,6 +9,6 @@ via_ir = true
 optimizer = true
 optimizer-runs = 200
 
-rpc_endpoints = { mainnet = "https://eth.drpc.org" }
+rpc_endpoints = { mainnet = "https://eth.drpc.org", hoodi = "https://hoodi.drpc.org" }
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

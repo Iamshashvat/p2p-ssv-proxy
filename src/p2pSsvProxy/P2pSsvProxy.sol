@@ -127,12 +127,12 @@ contract P2pSsvProxy is OwnableAssetRecoverer, ERC165, IP2pSsvProxy {
     /// @dev Set values that are constant, common for all clients, known at the initial deploy time.
     constructor() {
         i_ssvNetwork = (block.chainid == 1)
-            ? ISSVNetwork(0xDD9BC35aE942eF0cFa76930954a156B3fF30a4E1)
-            : ISSVNetwork(0x38A4794cCEd47d3baf7370CcC43B560D3a1beEFA);
+            ? ISSVNetwork(0xDD9BC35aE942eF0cFa76930954a156B3fF30a4E1) 
+            : ISSVNetwork(0x58410Bef803ECd7E63B23664C586A6DB72DAf59c);
 
         i_ssvToken = (block.chainid == 1)
             ? IERC20(0x9D65fF81a3c488d585bBfb0Bfe3c7707c7917f54)
-            : IERC20(0xad45A78180961079BFaeEe349704F411dfF947C6);
+            : IERC20(0x9F5d4Ec84fC4785788aB44F9de973cF34F7A038e);
     }
 
     /// @inheritdoc IP2pSsvProxy
@@ -446,7 +446,7 @@ contract P2pSsvProxy is OwnableAssetRecoverer, ERC165, IP2pSsvProxy {
     function migrateClusterToETH(
         uint64[] calldata _operatorIds,
         ISSVNetwork.Cluster calldata _cluster
-    ) external payable onlyOperatorOrOwner {
+    ) external payable onlyP2pSsvProxyFactory {
         ISSVNetworkEth(address(i_ssvNetwork)).migrateClusterToETH{value: msg.value}(
             _operatorIds,
             _cluster
