@@ -925,12 +925,8 @@ contract MainnetIntegration is Test {
 
         uint256 neededEth = p2pSsvProxyFactory.getNeededAmountOfEtherToCoverSsvFees(ssvPayload1.tokenAmount);
 
-        vm.expectRevert(abi.encodeWithSelector(
-            P2pSsvProxyFactory__DuplicateOperatorOwnersNotAllowed.selector,
-            ssvPayload1.ssvOperators[3].owner,
-            ssvPayload1.ssvOperators[3].id,
-            ssvPayload1.ssvOperators[2].id
-        ));
+        // SSV Network rejects duplicate operator IDs.
+        vm.expectRevert(ISSVNetworkCore.OperatorsListNotUnique.selector);
         p2pSsvProxyFactory.registerValidators{value: neededEth}(
             ssvPayload1,
             clientConfig,
@@ -939,7 +935,7 @@ contract MainnetIntegration is Test {
 
         vm.stopPrank();
 
-        console.log("test_DuplicateOperatorOwner finsihed");
+        console.log("test_DuplicateOperatorOwner finished");
     }
 
     function test_NewClientSelectors() public {

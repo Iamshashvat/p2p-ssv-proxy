@@ -61,16 +61,6 @@ error P2pSsvProxyFactory__SsvOperatorNotAllowed(address _ssvOperatorOwner, uint6
 /// @param _ssvOperatorIdsLength SsvOperatorIds arrray Length
 error P2pSsvProxyFactory__SsvOperatorOwnersAndIdsMustHaveTheSameLength(uint256 _ssvOperatorOwnersLength, uint256 _ssvOperatorIdsLength);
 
-/// @notice All operators should belong to different owners
-/// @param _ssvOperatorOwner operator owner who owns at least 2 of the passed operator IDs
-/// @param _ssvOperatorId1 passed operator ID owned by the same owner
-/// @param _ssvOperatorId2 passed operator ID owned by the same owner
-error P2pSsvProxyFactory__DuplicateOperatorOwnersNotAllowed(
-    address _ssvOperatorOwner,
-    uint64 _ssvOperatorId1,
-    uint64 _ssvOperatorId2
-);
-
 /// @notice All the SSV operator IDs must be unique
 /// @param _ssvOperatorId duplicated operator ID
 error P2pSsvProxyFactory__DuplicateIdsNotAllowed(uint64 _ssvOperatorId);
@@ -251,7 +241,7 @@ contract P2pSsvProxyFactory is OwnableAssetRecoverer, OwnableWithOperator, ERC16
         _;
     }
 
-    /// @notice Revert if either 1) one of the operator IDs is not allowed 2) at least 2 operator IDs belong to the same owner
+    /// @notice Revert if one of the operator IDs is not allowed
     modifier onlyAllowedOperators(SsvOperator[] calldata _operators) {
         uint256 operatorCount = _operators.length;
         for (uint256 i = 0; i < operatorCount; ++i) {
@@ -267,22 +257,12 @@ contract P2pSsvProxyFactory is OwnableAssetRecoverer, OwnableWithOperator, ERC16
             if (!isAllowed) {
                 revert P2pSsvProxyFactory__SsvOperatorNotAllowed(currentOperatorOwner, _operators[i].id);
             }
-
-            for (uint256 k = 0; k < operatorCount; ++k) {
-                if (i != k && currentOperatorOwner == _operators[k].owner) {
-                    revert P2pSsvProxyFactory__DuplicateOperatorOwnersNotAllowed(
-                        currentOperatorOwner,
-                        _operators[i].id,
-                        _operators[k].id
-                    );
-                }
-            }
         }
 
         _;
     }
 
-    /// @notice Revert if either 1) one of the operator IDs is not allowed 2) at least 2 operator IDs belong to the same owner
+    /// @notice Revert if one of the operator IDs is not allowed
     modifier onlyAllowedOperatorsByOwner(address[] calldata _operatorOwners, uint64[] calldata _operatorIds) {
         uint256 ownersCount = _operatorOwners.length;
         uint256 idsCount = _operatorIds.length;
@@ -302,16 +282,6 @@ contract P2pSsvProxyFactory is OwnableAssetRecoverer, OwnableWithOperator, ERC16
             }
             if (!isAllowed) {
                 revert P2pSsvProxyFactory__SsvOperatorNotAllowed(currentOperatorOwner, _operatorIds[i]);
-            }
-
-            for (uint256 k = 0; k < ownersCount; ++k) {
-                if (i != k && currentOperatorOwner == _operatorOwners[k]) {
-                    revert P2pSsvProxyFactory__DuplicateOperatorOwnersNotAllowed(
-                        currentOperatorOwner,
-                        _operatorIds[i],
-                        _operatorIds[k]
-                    );
-                }
             }
         }
 
