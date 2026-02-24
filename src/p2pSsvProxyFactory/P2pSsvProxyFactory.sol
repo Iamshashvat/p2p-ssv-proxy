@@ -10,7 +10,6 @@ import "../@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 import "../proxy/P2pBeaconProxy.sol";
 
-import "../interfaces/IDepositContract.sol";
 import "../interfaces/p2p/IFeeDistributor.sol";
 import "../interfaces/p2p/IFeeDistributorFactory.sol";
 import "../interfaces/p2p/IP2pOrgUnlimitedEthDepositor.sol";
@@ -70,10 +69,6 @@ error P2pSsvProxyFactory__DuplicateIdsNotAllowed(uint64 _ssvOperatorId);
 /// @param _paid actually sent ETH value
 error P2pSsvProxyFactory__NotEnoughEtherPaidToCoverSsvFees(uint256 _needed, uint256 _paid);
 
-/// @notice ETH value passed with the transaction must be equal to 32 times validator count
-/// @param _actualEthValue actually sent ETH value
-error P2pSsvProxyFactory__EthValueMustBe32TimesValidatorCount(uint256 _actualEthValue);
-
 /// @dev We assume, SSV won't either drop 7539x or soar higher than 100 ETH.
 /// If it does, this contract won't be operational and another contract will have to be deployed.
 error P2pSsvProxyFactory__SsvPerEthExchangeRateDividedByWeiOutOfRange();
@@ -112,16 +107,6 @@ error P2pSsvProxyFactory__CannotSetZeroAllowedSsvOperatorOwners();
 /// @notice Should pass at least 1 SSV operator owner
 error P2pSsvProxyFactory__CannotRemoveZeroAllowedSsvOperatorOwners();
 
-/// @notice There should equal number of pubkeys, signatures, and depositDataRoots
-/// @param _ssvValidatorsLength validators list length
-/// @param _signaturesLength signatures list length
-/// @param _depositDataRootsLength depositDataRoots list length
-error P2pSsvProxyFactory__DepositDataArraysShouldHaveTheSameLength(
-    uint256 _ssvValidatorsLength,
-    uint256 _signaturesLength,
-    uint256 _depositDataRootsLength
-);
-
 /// @notice P2pSsvProxy should have already been deployed for the given FeeDistributor instance
 /// @param _feeDistributorInstance client FeeDistributor instance
 error P2pSsvProxyFactory__P2pSsvProxyDoesNotExist(
@@ -154,9 +139,6 @@ contract P2pSsvProxyFactory is OwnableAssetRecoverer, OwnableWithOperator, ERC16
 
     /// @notice SSVNetwork address
     ISSVNetwork private immutable i_ssvNetwork;
-
-    /// @notice Beacon Deposit Contract
-    IDepositContract private immutable i_depositContract;
 
     /// @notice P2pOrgUnlimitedEthDepositor
     IP2pOrgUnlimitedEthDepositor private immutable i_p2pOrgUnlimitedEthDepositor;
@@ -327,10 +309,6 @@ contract P2pSsvProxyFactory is OwnableAssetRecoverer, OwnableWithOperator, ERC16
         s_referenceFeeDistributor = _referenceFeeDistributor;
         emit P2pSsvProxyFactory__ReferenceFeeDistributorSet(_referenceFeeDistributor);
 
-        i_depositContract = (block.chainid == 1)
-            ? IDepositContract(0x00000000219ab540356cBB839Cbe05303d7705Fa) 
-            : IDepositContract(0x4242424242424242424242424242424242424242); // hoodi
-
         i_ssvToken = (block.chainid == 1)
             ? IERC20(0x9D65fF81a3c488d585bBfb0Bfe3c7707c7917f54)    
             : IERC20(0x9F5d4Ec84fC4785788aB44F9de973cF34F7A038e);         // hoodi
@@ -346,7 +324,6 @@ contract P2pSsvProxyFactory is OwnableAssetRecoverer, OwnableWithOperator, ERC16
         i_ssvToken.approve(address(i_ssvNetwork), type(uint256).max);
     }
 
-    /// @notice Accept ETH from proxies (e.g. withdrawEthToFactory)
     receive() external payable {}
 
     /// @inheritdoc IP2pSsvProxyFactory
@@ -818,42 +795,6 @@ contract P2pSsvProxyFactory is OwnableAssetRecoverer, OwnableWithOperator, ERC16
         emit P2pSsvProxyFactory__ClusterMigrationInitiated(_p2pSsvProxy, msg.value);
     }
 
-    /// @notice Make ETH2 (Beacon) deposits for ETH-native registration path
-    /// @dev Variant of _makeBeaconDeposits that does not require msg.value == COLLATERAL * count,
-    /// since msg.value includes additional ETH for SSV cluster funding.
-    /// @param _depositData signatures and depositDataRoots from Beacon deposit data
-    /// @param _withdrawalCredentialsAddress address for 0x01 withdrawal credentials
-    /// @param _pubkeys list of pubkeys
-    function _makeBeaconDepositsEth(
-        DepositData calldata _depositData,
-        address _withdrawalCredentialsAddress,
-        bytes[] calldata _pubkeys
-    ) private {
-        uint256 validatorCount = _pubkeys.length;
-
-        if (_depositData.signatures.length != validatorCount || _depositData.depositDataRoots.length != validatorCount) {
-            revert P2pSsvProxyFactory__DepositDataArraysShouldHaveTheSameLength(
-                validatorCount,
-                _depositData.signatures.length,
-                _depositData.depositDataRoots.length
-            );
-        }
-
-        bytes memory withdrawalCredentials = abi.encodePacked(
-            hex'010000000000000000000000',
-            _withdrawalCredentialsAddress
-        );
-
-        for (uint256 i = 0; i < validatorCount; ++i) {
-            i_depositContract.deposit{value: COLLATERAL}(
-                _pubkeys[i],
-                withdrawalCredentials,
-                _depositData.signatures[i],
-                _depositData.depositDataRoots[i]
-            );
-        }
-    }
-
     /**********************************/
     /* Beacon Proxy Management        */
     /**********************************/
@@ -1133,84 +1074,6 @@ contract P2pSsvProxyFactory is OwnableAssetRecoverer, OwnableWithOperator, ERC16
     ) private {
         delete s_allowedSsvOperatorIds[_ssvOperatorOwner];
         emit P2pSsvProxyFactory__SsvOperatorIdsCleared(_ssvOperatorOwner);
-    }
-
-    /// @notice Make ETH2 (Beacon) deposits via the official Beacon Deposit Contract
-    /// @param _depositData signatures and depositDataRoots from Beacon deposit data
-    /// @param _withdrawalCredentialsAddress address for 0x01 withdrawal credentials from Beacon deposit data (1 for the batch)
-    /// @param _ssvValidators list of pubkeys and SSV sharesData
-    function _makeBeaconDeposits(
-        DepositData calldata _depositData,
-        address _withdrawalCredentialsAddress,
-        SsvValidator[] calldata _ssvValidators
-    ) private {
-        uint256 validatorCount = _ssvValidators.length;
-
-        if (msg.value != COLLATERAL * validatorCount) {
-            revert P2pSsvProxyFactory__EthValueMustBe32TimesValidatorCount(msg.value);
-        }
-
-        if (_depositData.signatures.length != validatorCount || _depositData.depositDataRoots.length != validatorCount) {
-            revert P2pSsvProxyFactory__DepositDataArraysShouldHaveTheSameLength(
-                validatorCount,
-                _depositData.signatures.length,
-                _depositData.depositDataRoots.length
-            );
-        }
-
-        bytes memory withdrawalCredentials = abi.encodePacked(
-            hex'010000000000000000000000',
-            _withdrawalCredentialsAddress
-        );
-
-        for (uint256 i = 0; i < validatorCount; ++i) {
-            // ETH deposit
-            i_depositContract.deposit{value: COLLATERAL}(
-                _ssvValidators[i].pubkey,
-                withdrawalCredentials,
-                _depositData.signatures[i],
-                _depositData.depositDataRoots[i]
-            );
-        }
-    }
-
-    /// @notice Make ETH2 (Beacon) deposits via the official Beacon Deposit Contract
-    /// @param _depositData signatures and depositDataRoots from Beacon deposit data
-    /// @param _withdrawalCredentialsAddress address for 0x01 withdrawal credentials from Beacon deposit data (1 for the batch)
-    /// @param _pubkeys list of pubkeys
-    function _makeBeaconDeposits(
-        DepositData calldata _depositData,
-        address _withdrawalCredentialsAddress,
-        bytes[] calldata _pubkeys
-    ) private {
-        uint256 validatorCount = _pubkeys.length;
-
-        if (msg.value != COLLATERAL * validatorCount) {
-            revert P2pSsvProxyFactory__EthValueMustBe32TimesValidatorCount(msg.value);
-        }
-
-        if (_depositData.signatures.length != validatorCount || _depositData.depositDataRoots.length != validatorCount) {
-            revert P2pSsvProxyFactory__DepositDataArraysShouldHaveTheSameLength(
-                validatorCount,
-                _depositData.signatures.length,
-                _depositData.depositDataRoots.length
-            );
-        }
-
-        bytes memory withdrawalCredentials = abi.encodePacked(
-            hex'010000000000000000000000',
-            _withdrawalCredentialsAddress
-        );
-
-        for (uint256 i = 0; i < validatorCount; ++i) {
-            // ETH deposit
-            i_depositContract.deposit{value: COLLATERAL}(
-                _pubkeys[i],
-                withdrawalCredentials,
-                _depositData.signatures[i],
-                _depositData.depositDataRoots[i]
-            );
-        }
     }
 
     /// @inheritdoc IOwnable

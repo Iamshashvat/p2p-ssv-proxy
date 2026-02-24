@@ -6,21 +6,25 @@ pragma solidity 0.8.24;
 import "../@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import "../@openzeppelin/contracts/utils/Address.sol";
 
+error P2pBeaconProxy__BeaconIsNotAContract(address beacon);
+error P2pBeaconProxy__ImplementationIsNotAContract(address implementation);
+error P2pBeaconProxy__InitFailed();
+
 /// @title Minimal Beacon Proxy for P2pSsvProxy instances
 /// @dev Stores the beacon address as an immutable. All calls are delegated to the implementation
 /// returned by the beacon. Initialization data is executed via delegatecall in the constructor.
 contract P2pBeaconProxy {
     /// @dev The beacon address is immutable -- the beacon itself manages the implementation pointer.
-    address private immutable _beacon;
+    address private immutable i_beacon;
 
     /// @notice Deploy a beacon proxy pointing to `beacon`, optionally initializing via `data`.
     /// @param beacon The UpgradeableBeacon address
     /// @param data   ABI-encoded initializer call (e.g. abi.encodeCall(P2pSsvProxy.initialize, (feeDistributor)))
     constructor(address beacon, bytes memory data) payable {
-        require(Address.isContract(beacon), "P2pBeaconProxy: beacon is not a contract");
+        if (!Address.isContract(beacon)) revert P2pBeaconProxy__BeaconIsNotAContract(beacon);
         address impl = IBeacon(beacon).implementation();
-        require(Address.isContract(impl), "P2pBeaconProxy: implementation is not a contract");
-        _beacon = beacon;
+        if (!Address.isContract(impl)) revert P2pBeaconProxy__ImplementationIsNotAContract(impl);
+        i_beacon = beacon;
 
         if (data.length > 0) {
             (bool success, bytes memory returndata) = impl.delegatecall(data);
@@ -30,7 +34,7 @@ contract P2pBeaconProxy {
                         revert(add(returndata, 0x20), mload(returndata))
                     }
                 }
-                revert("P2pBeaconProxy: init failed");
+                revert P2pBeaconProxy__InitFailed();
             }
         }
     }
@@ -49,11 +53,11 @@ contract P2pBeaconProxy {
 
     /// @dev Fallback: delegate all calls to the beacon's current implementation.
     fallback() external payable {
-        _delegate(IBeacon(_beacon).implementation());
+        _delegate(IBeacon(i_beacon).implementation());
     }
 
     /// @dev Receive: delegate ETH reception to the beacon's current implementation.
     receive() external payable {
-        _delegate(IBeacon(_beacon).implementation());
+        _delegate(IBeacon(i_beacon).implementation());
     }
 }

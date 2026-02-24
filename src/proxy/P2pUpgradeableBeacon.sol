@@ -6,59 +6,64 @@ pragma solidity 0.8.24;
 import "../@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import "../@openzeppelin/contracts/utils/Address.sol";
 
+error P2pUpgradeableBeacon__ImplementationIsNotAContract(address implementation);
+error P2pUpgradeableBeacon__ZeroOwnerAddress();
+error P2pUpgradeableBeacon__CallerIsNotTheOwner(address caller);
+error P2pUpgradeableBeacon__ZeroNewOwnerAddress();
+
 /// @title Upgradeable Beacon for P2pSsvProxy fleet
 /// @dev Minimal beacon implementation. The owner can upgrade the implementation
 /// for all P2pBeaconProxy instances that reference this beacon.
 contract P2pUpgradeableBeacon is IBeacon {
-    address private _implementation;
-    address private _owner;
+    address private s_implementation;
+    address private s_owner;
 
     /// @dev Emitted when the implementation is upgraded.
-    event Upgraded(address indexed implementation);
+    event P2pUpgradeableBeacon__Upgraded(address indexed implementation);
 
     /// @dev Emitted when ownership is transferred.
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event P2pUpgradeableBeacon__OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     /// @notice Deploy the beacon with an initial implementation and owner.
     /// @param implementation_ The initial implementation contract address
     /// @param owner_ The owner who can call upgradeTo
     constructor(address implementation_, address owner_) {
-        require(Address.isContract(implementation_), "P2pUpgradeableBeacon: implementation is not a contract");
-        require(owner_ != address(0), "P2pUpgradeableBeacon: owner is the zero address");
-        _implementation = implementation_;
-        _owner = owner_;
-        emit Upgraded(implementation_);
-        emit OwnershipTransferred(address(0), owner_);
+        if (!Address.isContract(implementation_)) revert P2pUpgradeableBeacon__ImplementationIsNotAContract(implementation_);
+        if (owner_ == address(0)) revert P2pUpgradeableBeacon__ZeroOwnerAddress();
+        s_implementation = implementation_;
+        s_owner = owner_;
+        emit P2pUpgradeableBeacon__Upgraded(implementation_);
+        emit P2pUpgradeableBeacon__OwnershipTransferred(address(0), owner_);
     }
 
     modifier onlyOwner() {
-        require(msg.sender == _owner, "P2pUpgradeableBeacon: caller is not the owner");
+        if (msg.sender != s_owner) revert P2pUpgradeableBeacon__CallerIsNotTheOwner(msg.sender);
         _;
     }
 
     /// @inheritdoc IBeacon
     function implementation() public view override returns (address) {
-        return _implementation;
+        return s_implementation;
     }
 
     /// @notice Upgrade the beacon to a new implementation.
     /// @param newImplementation The new implementation contract address
     function upgradeTo(address newImplementation) public onlyOwner {
-        require(Address.isContract(newImplementation), "P2pUpgradeableBeacon: implementation is not a contract");
-        _implementation = newImplementation;
-        emit Upgraded(newImplementation);
+        if (!Address.isContract(newImplementation)) revert P2pUpgradeableBeacon__ImplementationIsNotAContract(newImplementation);
+        s_implementation = newImplementation;
+        emit P2pUpgradeableBeacon__Upgraded(newImplementation);
     }
 
     /// @notice Returns the current owner.
     function owner() public view returns (address) {
-        return _owner;
+        return s_owner;
     }
 
     /// @notice Transfer ownership of the beacon.
     /// @param newOwner The new owner address
     function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0), "P2pUpgradeableBeacon: new owner is the zero address");
-        emit OwnershipTransferred(_owner, newOwner);
-        _owner = newOwner;
+        if (newOwner == address(0)) revert P2pUpgradeableBeacon__ZeroNewOwnerAddress();
+        emit P2pUpgradeableBeacon__OwnershipTransferred(s_owner, newOwner);
+        s_owner = newOwner;
     }
 }

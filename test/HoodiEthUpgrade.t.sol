@@ -71,7 +71,7 @@ contract HoodiEthUpgrade is Test {
         keccak256("ClusterReactivated(address,uint64[],(uint32,uint64,uint64,bool,uint256))");
 
     function setUp() public {
-        vm.createSelectFork("hoodi");
+        vm.createSelectFork("hoodi", 2262900);
         _initCoreActorsAndFactory();
         _authorizeLocalFactoryInFeeDistributorFactory();
         _initLegacyTestDefaults();
