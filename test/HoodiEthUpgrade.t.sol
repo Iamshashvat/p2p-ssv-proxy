@@ -12,6 +12,7 @@ import "../src/proxy/P2pUpgradeableBeacon.sol";
 import "../src/interfaces/p2p/IFeeDistributor.sol";
 import "../src/interfaces/ssv/ISSVViews.sol";
 import "../src/structs/P2pStructs.sol";
+import "../src/access/OwnableBase.sol";
 import "../src/mocks/IChangeOperator.sol";
 
 contract HoodiEthUpgrade is Test {
@@ -23,6 +24,14 @@ contract HoodiEthUpgrade is Test {
     struct EthValidatorFixture {
         bytes pubkey;
         bytes sharesData;
+        uint256 registerValue;
+    }
+
+    struct MultiValidatorEthFixture {
+        uint64[] ids;
+        address[] owners;
+        bytes[] pubkeys;
+        bytes[] sharesData;
         uint256 registerValue;
     }
 
@@ -53,6 +62,7 @@ contract HoodiEthUpgrade is Test {
     bytes public ethValidatorSharesData;
     uint256 public constant ETH_REGISTER_VALUE = 56657822608000000;
     uint256 public constant ETH_DEPOSIT_VALUE = 0.001 ether;
+    uint256 public constant MULTI_ETH_REGISTER_VALUE = 10074069280000000;
 
     event P2pSsvProxy__EthReceived(address indexed _sender, uint256 _amount);
     event P2pSsvProxy__SuccessfullyCalledViaFallback(address indexed _caller, bytes4 indexed _selector);
@@ -172,6 +182,45 @@ contract HoodiEthUpgrade is Test {
         fixture.registerValue = ETH_REGISTER_VALUE;
     }
 
+    function _getMultiValidatorEthFixture() internal returns (MultiValidatorEthFixture memory f) {
+        f.ids = new uint64[](4);
+        f.ids[0] = 26;
+        f.ids[1] = 36;
+        f.ids[2] = 40;
+        f.ids[3] = 41;
+
+        f.owners = new address[](4);
+        for (uint256 i = 0; i < 4; ++i) {
+            (address opOwner,,,,,) = ISSVViews(SSV_VIEWS).getOperatorById(f.ids[i]);
+            f.owners[i] = opOwner;
+        }
+
+        address[] memory uniqueOwners = new address[](2);
+        uniqueOwners[0] = f.owners[0];
+        uniqueOwners[1] = f.owners[1];
+        factory.setAllowedSsvOperatorOwners(uniqueOwners);
+
+        uint64[24] memory idsForOwner0;
+        idsForOwner0[0] = 26;
+        idsForOwner0[1] = 40;
+        idsForOwner0[2] = 41;
+        factory.setSsvOperatorIds(idsForOwner0, uniqueOwners[0]);
+
+        uint64[24] memory idsForOwner1;
+        idsForOwner1[0] = 36;
+        factory.setSsvOperatorIds(idsForOwner1, uniqueOwners[1]);
+
+        f.pubkeys = new bytes[](2);
+        f.pubkeys[0] = hex"9736b1f94fa67402c25b6bb329dc4bbf23086113e77ab1c0ff811516cdc8b798ada7755b6b5f4661378b337d7f560d21";
+        f.pubkeys[1] = hex"a14ba157c018e484226207edc4e6897ac40783311961727917d3d0182467a3f59e2f92d269add085db539899b6641249";
+
+        f.sharesData = new bytes[](2);
+        f.sharesData[0] = hex"86f07418967089326b59622ff8f20b457e5e28ebfa86f8bc061001a90ab5bd9fc9592914762bc44e57d626f1872dec4d0e1af1a5f4837a7c5ad13d906b97f91fa0ef7e0e35a447e76515c441026bfcf4d17d46b4dc107e8f3f9c2b435b6b12bb8f9333406056e795992d585dceffe85025f7127198f6196afae956bc7b1f4a971232e3e9f2f4f04c953d3d05f24684aa85664e5dbdf79491029a0357c7e56e2f7a47d01f8778fde57371dfd1d25e2cbbeeaed0488227b5b40e97ba03cb078dcdb184cc51df6d5637c963458393674f5d65af10b3f3f304621a03cffc5f88e9fec2e33b4ae511a8372fc0b5497a42200592aa85db280a77b1b8211356717562aef736034832913ee4935d0fa7ee7dd2c0d4d4bd11900890aabc5dcc0516a94f707720e978421ac4fd3f552ff88b5907ea9a148332639c685a1f7ac42b49f0326447b97244ce4e1a61b40437b92ef8fd1696be12dc2dc16fb62423a2cc7768bf266b532afa40f6799894a5239c62b66e1052102483168e8e864423cc9de06ca65db5db07840aef3b96a4c89b0ea8241ebac87367b986439202eb2bdc49114dcc1ad0c533e5c6c4b437e0c4028a620f5e3e15bd0410db237a78bf99e9bb76a41e18f1687616ab46fa98380523b4e18ba3930740f5d55971e292de8559966208296ea2d73c6835ca75d05a20db4125d8d5ab41dc09664e14b9131336a01c2f40b715ccfcc04e04c7ffa6a15d93de82db39dd9573ab0ecdf10772a0200f0abb83c2b3776496e2a3f93142ea738144fa93a45e2230e3e8cbb40a9c55d65060af040688eca55132210c0f27217ae23284feb5e619df35a8d3893e5a6d2cfbb443a87eee1dc72928b09ad322b43c4e460d89066a0ba15c19af0ab733223aee18c2e41bbf03674a6a11ddbf18b870a19109640336bc9b2be9b0ec95093a8dcbb8d0c196d49bc5a749218143bb0645ca37be8858b87083888688ce591ed3bfb1a1456c0f01b70385656953ff294640d123e1c23796eb1c401c19d24f0ee6ebfdd35642dffd0e83fa1033efb73c7b03cc978786592f55fa840a2bc2ef489fe972514269c96457bbf3f9f2d979d16cc64cd92aa714816aa711f1a919396349715758cb4997873edc705b18f8640369ca9ec087688e88d53a46abcab4871b8c5dab3b46f534407058bc3245daf24d52c1ef27f0f7ac3c1f628cbf7f7f94962e8648ffadd51bf60512a0d45294bdde53755bafbb4182dcc85753971e8249c713dac1a0c7a2fa55f2e97f558659a484337924437fb0c6ab76b8d2a7b188781bd8bf97c8b8cacfba70bb775378e07aa83ecc054c4270e956edf3977311f710297d44c5dbf2a3ad0b8bdbacace7d874999d8d1296a81ae22225c6c16485876f9a9f2dd97c90fb3128a2965ecee4a77cafe9e48bb0194f464b4dbf97f200f4b0dc30c2b9c7dc04b7588beb796ba323f0998d29c67cbcd25ef8ea9e3ac84c3d7392a5ebf231adae777e0843dc5904f4662f4f131cc751d2aefff92bb6c9f4a34028cd026f1fe1f53eb9728fd8f147ce44cf6f2c2001f5c9f4f0989112bc170828b33e1803aab5ebf33046f7cebe63be1e850642f5c3e75fecf48fed24bf42ff9aa7e4d90826b6b47cf09dcce3b561bd3665daa85667981f0b8e83c17864b8e1a21575c8fd62aa9ce90b63a0f17bb3649b03d28aa1d25492598031ed5f19293d40d10f4d77e5080f6fbc57f8e7ab4d0437a972b74485dcf79aa824039411acbf7342ee1d4302126d6b797c232db547926008801b34267d8b877044687f33b73b99fc597b0096c406d48218c832ce01e76ff63bdb0996d2050a7175e14d956380f14acf9ae15be920f12f";
+        f.sharesData[1] = hex"8de7a4cda0061036544e46c6663b10dc9041da347cda2f898156d35f6904fe6aafe730f9a9d812b9d7b71c050a5d36b705478d593ab5ff6b04d6e04a724f3db54d73697796b50c9c196fa2a7a83d5673d94479f04e622f31a09f0384bb4c91a592b89b64ef56f224cfd800cd8e502693f2f1d365806d4f2852edd8ef65818196cac465dcb17b90697fc12996baa015f1b1bd6b34c06a2b3e9ea7d53b7057f1c288ae2027ff087c0ca546eb82befff5966bd554dc6dc51c074080ae79d919280fa430bceffa27037538a4f995e72fba25fdb0faa02758d3ff6434a433781e54b985e488df7d653dd9e36bd3fa28abaf53a8f51a8b71c694fc279b4c463e5a820d799ebef441b9e1456d49cc738ca79518882d35c95340dd394bc5e300b52d759540c4324ad64eb919feeda344ff29b1be06e2200c2f6a8478bdcf472c33662b338ab78c56be51968e205c656ffd439c9d56cc89e7995c42485ba84771f4c9a6f11e3d8e3d5d4a54cb8e6abf17de13bd40409e977ccea2b61cd83018bab97ec6d9097c3936c2a178fe485af9589f744077b09243dab9d9a469d8c2224a75a8779ab29b2a81867923799650337f1c163736812b621fe74423f37726456ac8bb2c546434db3da010ed344d77ea46e11c28723f4f8886b6a86e5c79ff4e49665d85f1b6dfd2e975a287dd8da1a823b26ba4a914b39dbc1cfbb1f10261f04033efb2a42b238dd2275e701f9201bd9e716b395adfd7a543e6740b22e64db0d4e2e7793d11ba42815c96da2b57066aaf3950f651e686383fe1c4f57948d7755bbcc1b67141f0b9bb43fa7a98799d18798018abd0b6069287dcfae5830f3aadef445e21d461917a1ef9c2c074aa49c448ec4f47cce60ab26a593cf463d7831bb3c30c760dbc93845b943402560fca4232a0225099f2cbc6bb9d21f792b1cd354f4bceff75af3e63f21703529bcd6752388fc3dc92eafece893a41ea4099d50820723a9739d6cbcba827725bc25e8d654fcc9ced4acbafaa50fa2663ce8198e46249b66d498d7d80e639c3987ea5335d6bcbf01fb9f8056ed026eadc060f8531e089ad9e5e92f4402af93f7236b83eaee60c89a57ef37df154419859ec641e08516bb6f83e50df63e283fc9d16c81fef774e231bb770872b5c64a7ec097ca0853cc325883c85c1a2dc73b21cdc7798a891373f3817cacf5c671b2d962aba117831ce6416c0d2bb09e82e31cefb9d29f6180bbcd0976888fd431b50de88423713e1bce59325926a97da8724b3ab0ffb3c9ee1f8587022bb0fd06543791734373e987eae1c6489d483131969e31364f77310918d1b4e830da2a5a86c65fca7ee2867e9609261c1371b29f0203a7a8ecdca539a84b4889795c4ef811c48f575949dff2115c549ffda187d3c523506af24d51b4ad608ba363cd3e642990313465e54648b4c8a20b639205b262f36e491629abcc468d5a5bc83a01ba3a3f3c79f3c1dee0edce46d36e3179f750a05c0b2eca3e4480984cde4908e748acc91eae401fc04cb0e02717c570417a0541047acffbd3701171ed51e73890701f8309f02abfd906a3b3f7dbe9cf2b3ea4990cb85048779a3f699e7bbba989d35e50676517cbd514e3d3a9dfe4329e30ea7d2d50da54d070e1f435191db6f2529ee82084ab54a549ec21ccc9ff912115e01a3522fa993705b2d7c7b3a5d9bd9a34dde218f197afd6b5391adaa6f81f5493fda953c574f131d1135366cb1bcdb50014209a27a29abd823825cf55b52ab0a9cf40e37c479a8ec932060f76d045537bd5f0b1d2a96be3e83be62e72dc2cbf722d0511f6d2a82c615816b3d19be070c61abbe79274364bb9acd29";
+
+        f.registerValue = MULTI_ETH_REGISTER_VALUE;
+    }
+
     /**********************************/
     /* Generic Test Helpers           */
     /**********************************/
@@ -258,6 +307,51 @@ contract HoodiEthUpgrade is Test {
             ethOperatorIds,
             pubkeys,
             sharesData,
+            _getEmptyCluster(),
+            localClientConfig,
+            localReferrerConfig
+        );
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        clusterAfterRegister = _extractClusterFromValidatorAdded(logs, proxy);
+    }
+
+    function _registerMultiValidatorEthFixture()
+        internal
+        returns (address proxy, uint64[] memory multiOperatorIds, ISSVNetworkCore.Cluster memory clusterAfterRegister)
+    {
+        MultiValidatorEthFixture memory f = _getMultiValidatorEthFixture();
+        multiOperatorIds = f.ids;
+
+        proxy = _deployProxyViaClone();
+        vm.deal(address(factory), f.registerValue);
+        vm.recordLogs();
+        vm.prank(address(factory));
+        P2pSsvProxy(payable(proxy)).bulkRegisterValidatorsEth{value: f.registerValue}(
+            f.pubkeys,
+            f.ids,
+            f.sharesData,
+            _getEmptyCluster()
+        );
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        clusterAfterRegister = _extractClusterFromValidatorAdded(logs, proxy);
+    }
+
+    function _registerMultiValidatorViaFactoryEthFixture()
+        internal
+        returns (address proxy, uint64[] memory multiOperatorIds, ISSVNetworkCore.Cluster memory clusterAfterRegister)
+    {
+        MultiValidatorEthFixture memory f = _getMultiValidatorEthFixture();
+        multiOperatorIds = f.ids;
+
+        FeeRecipient memory localClientConfig = FeeRecipient({ recipient: payable(address(this)), basisPoints: 9500 });
+        FeeRecipient memory localReferrerConfig = FeeRecipient({ recipient: payable(address(0)), basisPoints: 0 });
+
+        vm.recordLogs();
+        proxy = factory.registerValidatorsEth{value: f.registerValue}(
+            f.owners,
+            f.ids,
+            f.pubkeys,
+            f.sharesData,
             _getEmptyCluster(),
             localClientConfig,
             localReferrerConfig
@@ -378,7 +472,9 @@ contract HoodiEthUpgrade is Test {
         address proxy = _deployProxyViaClone();
         (bytes[] memory pubkeys, bytes[] memory sharesData) = _buildSingleValidatorData();
         vm.prank(nobody);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(
+            P2pSsvProxy__NotP2pSsvProxyFactoryCalled.selector, nobody, IP2pSsvProxyFactory(address(factory))
+        ));
         P2pSsvProxy(payable(proxy)).bulkRegisterValidatorsEth{value: 1 ether}(
             pubkeys, operatorIds, sharesData, _getEmptyCluster()
         );
@@ -439,7 +535,9 @@ contract HoodiEthUpgrade is Test {
         ISSVNetworkCore.Cluster[] memory one = new ISSVNetworkCore.Cluster[](1);
         one[0] = _getEmptyCluster();
         vm.prank(nobody);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(
+            P2pSsvProxy__CallerNeitherOperatorNorOwner.selector, nobody, address(0), owner
+        ));
         P2pSsvProxy(payable(proxy)).reactivateEth{value: 1 ether}(operatorIds, one);
 
         ISSVNetworkCore.Cluster[] memory empty = new ISSVNetworkCore.Cluster[](0);
@@ -450,7 +548,9 @@ contract HoodiEthUpgrade is Test {
     function test_migrateClusterToETH_proxy_onlyFactory() public {
         address proxy = _deployProxyViaClone();
         vm.prank(nobody);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(
+            P2pSsvProxy__NotP2pSsvProxyFactoryCalled.selector, nobody, IP2pSsvProxyFactory(address(factory))
+        ));
         P2pSsvProxy(payable(proxy)).migrateClusterToETH{value: 1 ether}(operatorIds, _getEmptyCluster());
     }
 
@@ -486,7 +586,7 @@ contract HoodiEthUpgrade is Test {
 
     function test_depositToSsvEth_factory_onlyOwner() public {
         vm.prank(nobody);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(OwnableBase__CallerNotOwner.selector, nobody, owner));
         factory.depositToSsvEth{value: 1 ether}(address(0x123), operatorIds, _getEmptyCluster());
     }
 
@@ -558,7 +658,9 @@ contract HoodiEthUpgrade is Test {
 
         vm.deal(proxy, 1 ether);
         vm.prank(nobody);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(
+            P2pSsvProxy__CallerNeitherOperatorNorOwner.selector, nobody, address(0), owner
+        ));
         P2pSsvProxy(payable(proxy)).withdrawEthToOwner();
     }
 
@@ -683,6 +785,42 @@ contract HoodiEthUpgrade is Test {
     function test_hoodiSsvNetworkIsReachable() public view {
         string memory version = ISSVViews(SSV_VIEWS).getVersion();
         assertTrue(bytes(version).length > 0);
+    }
+
+    /**********************************/
+    /* Multi-Validator ETH Tests       */
+    /**********************************/
+
+    function test_bulkRegisterValidatorsEth_multipleValidators() public {
+        (address proxy,, ISSVNetworkCore.Cluster memory clusterAfterRegister) = _registerMultiValidatorEthFixture();
+
+        assertTrue(proxy != address(0));
+        assertEq(clusterAfterRegister.validatorCount, 2);
+        assertTrue(clusterAfterRegister.active);
+    }
+
+    function test_registerValidatorsEth_multipleValidators() public {
+        (address proxy,, ISSVNetworkCore.Cluster memory clusterAfterRegister) = _registerMultiValidatorViaFactoryEthFixture();
+
+        assertTrue(proxy != address(0));
+        assertEq(clusterAfterRegister.validatorCount, 2);
+        assertTrue(clusterAfterRegister.active);
+        assertEq(P2pSsvProxy(payable(proxy)).getFactory(), address(factory));
+    }
+
+    function test_depositToSsvEth_afterMultiValidatorRegistration() public {
+        (address proxy, uint64[] memory multiOpIds, ISSVNetworkCore.Cluster memory clusterAfterRegister) =
+            _registerMultiValidatorEthFixture();
+
+        ISSVNetworkCore.Cluster[] memory clusters = _singleClusterArray(clusterAfterRegister);
+
+        vm.recordLogs();
+        P2pSsvProxy(payable(proxy)).depositToSsvEth{value: ETH_DEPOSIT_VALUE}(multiOpIds, clusters);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        ISSVNetworkCore.Cluster memory clusterAfterDeposit = _extractClusterFromDeposited(logs, proxy);
+
+        assertEq(clusterAfterDeposit.validatorCount, 2);
+        assertTrue(clusterAfterDeposit.balance > clusterAfterRegister.balance);
     }
 
     receive() external payable {}
